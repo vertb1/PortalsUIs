@@ -114,6 +114,9 @@ do
 		Priorities = {};
 		OriginalMouseBehavior = nil;
 		MovementKeysEnabled = true; -- New property to enable movement
+		WatermarkEnabled = true; -- New property for watermark
+		WatermarkText = "BBot"; -- Default watermark text
+		Watermark = nil; -- Will hold the watermark instance
 	}
 
 	-- // Ignores
@@ -268,17 +271,8 @@ do
 				if bool then
 					-- Show the UI but don't capture character movement inputs
 					game:GetService("UserInputService").OverrideMouseIconBehavior = Enum.OverrideMouseIconBehavior.ForceShow
-					
-					-- Ensure the UI doesn't block movement inputs
-					if not Library.OriginalMouseBehavior then
-						Library.OriginalMouseBehavior = game:GetService("UserInputService").MouseBehavior
-					end
-					game:GetService("UserInputService").MouseBehavior = Enum.MouseBehavior.Default
 				else
-					-- Restore previous mouse behavior when UI is closed
-					if Library.OriginalMouseBehavior then
-						game:GetService("UserInputService").MouseBehavior = Library.OriginalMouseBehavior
-					end
+					-- Reset mouse behavior when UI is closed
 					game:GetService("UserInputService").OverrideMouseIconBehavior = Enum.OverrideMouseIconBehavior.None
 				end
 			end
@@ -963,6 +957,151 @@ do
 		return notification
 	end
 
+	-- Watermark function
+	function Library:CreateWatermark()
+		-- If there's already a watermark, destroy it first
+		if Library.Watermark then
+			Library.Watermark:Destroy()
+			Library.Watermark = nil
+		end
+		
+		-- Only create if watermark is enabled
+		if not Library.WatermarkEnabled then
+			return
+		end
+		
+		-- Create watermark container
+		local WatermarkContainer = Instance.new('Frame', Library.ScreenGUI)
+		WatermarkContainer.Name = "WatermarkContainer"
+		WatermarkContainer.Position = UDim2.new(0, 20, 0, 10)
+		WatermarkContainer.AutomaticSize = Enum.AutomaticSize.X
+		WatermarkContainer.Size = UDim2.new(0, 120, 0, 22)
+		WatermarkContainer.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+		WatermarkContainer.BackgroundTransparency = 0
+		WatermarkContainer.BorderSizePixel = 0
+		WatermarkContainer.ZIndex = 9999999
+		Library.Watermark = WatermarkContainer
+		
+		-- Create the UI elements
+		local Watermark = Instance.new("Frame")
+		Watermark.Name = "Watermark"
+		Watermark.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+		Watermark.BorderColor3 = Color3.fromRGB(0, 0, 0)
+		Watermark.BorderSizePixel = 1
+		Watermark.Position = UDim2.new(0, 0, 0, 0)
+		Watermark.AutomaticSize = Enum.AutomaticSize.X
+		Watermark.Size = UDim2.new(0, 0, 1, 0)
+		Watermark.Parent = WatermarkContainer
+		
+		local Inline = Instance.new("Frame")
+		Inline.Name = "Inline"
+		Inline.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+		Inline.BorderColor3 = Color3.fromRGB(0, 0, 0)
+		Inline.BorderSizePixel = 0
+		Inline.Position = UDim2.new(0, 1, 0, 1)
+		Inline.Size = UDim2.new(1, -2, 1, -2)
+		Inline.AutomaticSize = Enum.AutomaticSize.X
+		Inline.Parent = Watermark
+		
+		local UIStroke = Instance.new("UIStroke")
+		UIStroke.Name = "UIStroke"
+		UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		UIStroke.LineJoinMode = Enum.LineJoinMode.Miter
+		UIStroke.Thickness = 1
+		UIStroke.Transparency = 0.8
+		UIStroke.Parent = Watermark
+		
+		local Accent = Library:NewInstance("Frame", true)
+		Accent.Name = "Accent"
+		Accent.BackgroundColor3 = Library.Accent
+		Accent.BorderColor3 = Color3.fromRGB(20, 20, 20)
+		Accent.BorderSizePixel = 0
+		Accent.Position = UDim2.new(0, 0, 0, 0)
+		Accent.Size = UDim2.new(1, 0, 0, 2)
+		Accent.Parent = Inline
+		
+		local UIGradient = Instance.new("UIGradient")
+		UIGradient.Name = "UIGradient"
+		UIGradient.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(145, 145, 145)),
+		})
+		UIGradient.Rotation = 90
+		UIGradient.Parent = Accent
+		
+		local TextValue = Instance.new("TextLabel")
+		TextValue.Name = "TextValue"
+		TextValue.FontFace = realfont
+		TextValue.Text = Library.WatermarkText
+		TextValue.TextColor3 = Color3.fromRGB(255, 255, 255)
+		TextValue.TextSize = Library.FSize
+		TextValue.TextStrokeTransparency = 0
+		TextValue.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		TextValue.BackgroundTransparency = 1
+		TextValue.BorderColor3 = Color3.fromRGB(0, 0, 0)
+		TextValue.BorderSizePixel = 0
+		TextValue.Position = UDim2.new(0, 6, 0, 4)
+		TextValue.Size = UDim2.new(0, 0, 0, 14)
+		TextValue.AutomaticSize = Enum.AutomaticSize.X
+		TextValue.Parent = Inline
+		
+		local UIPadding = Instance.new("UIPadding")
+		UIPadding.Name = "UIPadding"
+		UIPadding.PaddingRight = UDim.new(0, 6)
+		UIPadding.Parent = Inline
+		
+		-- Make it draggable
+		local dragging = false
+		local dragInput
+		local dragStart
+		local startPos
+		
+		WatermarkContainer.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+				dragging = true
+				dragStart = input.Position
+				startPos = WatermarkContainer.Position
+			end
+		end)
+		
+		WatermarkContainer.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+				dragging = false
+			end
+		end)
+		
+		game:GetService("UserInputService").InputChanged:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
+				local delta = input.Position - dragStart
+				WatermarkContainer.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+			end
+		end)
+	end
+	
+	-- Function to update the watermark text
+	function Library:UpdateWatermark(text)
+		Library.WatermarkText = text or Library.WatermarkText
+		if Library.Watermark then
+			local textLabel = Library.Watermark:FindFirstChild("Watermark"):FindFirstChild("Inline"):FindFirstChild("TextValue")
+			if textLabel then
+				textLabel.Text = Library.WatermarkText
+			end
+		end
+	end
+	
+	-- Function to toggle watermark visibility
+	function Library:ToggleWatermark(state)
+		Library.WatermarkEnabled = state
+		if Library.Watermark then
+			Library.Watermark.Visible = state
+		end
+		
+		-- If enabling and no watermark exists, create it
+		if state and not Library.Watermark then
+			self:CreateWatermark()
+		end
+	end
+
 	do
 		local Pages = Library.Pages;
 		local Sections = Library.Sections;
@@ -1303,6 +1442,11 @@ do
 
 			function Window:UpdateTitle(str)
 				Title.Text = str
+			end
+
+			-- Initialize watermark if enabled
+			if Library.WatermarkEnabled then
+				Library:CreateWatermark()
 			end
 
 			-- // Returns
