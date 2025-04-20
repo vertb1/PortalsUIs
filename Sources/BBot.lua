@@ -100,7 +100,25 @@ do
 			[Enum.KeyCode.Backquote] = "`",
 			[Enum.UserInputType.MouseButton1] = "MB1",
 			[Enum.UserInputType.MouseButton2] = "MB2",
-			[Enum.UserInputType.MouseButton3] = "MB3"
+			[Enum.UserInputType.MouseButton3] = "MB3",
+			[Enum.KeyCode.End] = "End",
+			[Enum.KeyCode.Insert] = "Insert",
+			[Enum.KeyCode.Home] = "Home",
+			[Enum.KeyCode.Delete] = "Delete",
+			[Enum.KeyCode.PageUp] = "PageUp",
+			[Enum.KeyCode.PageDown] = "PageDown",
+			[Enum.KeyCode.F1] = "F1",
+			[Enum.KeyCode.F2] = "F2",
+			[Enum.KeyCode.F3] = "F3",
+			[Enum.KeyCode.F4] = "F4",
+			[Enum.KeyCode.F5] = "F5",
+			[Enum.KeyCode.F6] = "F6",
+			[Enum.KeyCode.F7] = "F7",
+			[Enum.KeyCode.F8] = "F8",
+			[Enum.KeyCode.F9] = "F9",
+			[Enum.KeyCode.F10] = "F10",
+			[Enum.KeyCode.F11] = "F11",
+			[Enum.KeyCode.F12] = "F12"
 		};
 		Connections = {};
 		UIKey = Enum.KeyCode.End;
@@ -117,6 +135,12 @@ do
 		WatermarkEnabled = true; -- New property for watermark
 		WatermarkText = "BBot"; -- Default watermark text
 		Watermark = nil; -- Will hold the watermark instance
+		KeybindListEnabled = false; -- New property for keybind list
+		KeybindList = nil; -- Will hold the keybind list instance
+		RegisteredKeybinds = {}; -- Table to store registered keybinds
+		DragTrajectory = {};
+		Signals = {};
+		GuiInset = game:GetService("GuiService"):GetGuiInset();
 	}
 
 	-- // Ignores
@@ -975,7 +999,7 @@ do
 		WatermarkContainer.Name = "WatermarkContainer"
 		WatermarkContainer.Position = UDim2.new(0, 20, 0, 10)
 		WatermarkContainer.AutomaticSize = Enum.AutomaticSize.X
-		WatermarkContainer.Size = UDim2.new(0, 120, 0, 22)
+		WatermarkContainer.Size = UDim2.new(0, 0, 0, 22)
 		WatermarkContainer.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
 		WatermarkContainer.BackgroundTransparency = 0
 		WatermarkContainer.BorderSizePixel = 0
@@ -1045,10 +1069,46 @@ do
 		TextValue.AutomaticSize = Enum.AutomaticSize.X
 		TextValue.Parent = Inline
 		
+		-- Add padding to control the size
 		local UIPadding = Instance.new("UIPadding")
 		UIPadding.Name = "UIPadding"
+		UIPadding.PaddingLeft = UDim.new(0, 6)
 		UIPadding.PaddingRight = UDim.new(0, 6)
 		UIPadding.Parent = Inline
+		
+		-- Add a constraint to limit the width
+		local UITextSizeConstraint = Instance.new("UITextSizeConstraint")
+		UITextSizeConstraint.Name = "UITextSizeConstraint"
+		UITextSizeConstraint.MaxTextSize = Library.FSize
+		UITextSizeConstraint.Parent = TextValue
+		
+		-- Limit the maximum width by limiting text width
+		local frame = TextValue
+		local maxWidth = 150 -- Maximum width in pixels
+		
+		-- Trim text if it becomes too long
+		local function updateTextSize()
+			local text = Library.WatermarkText
+			local textSize = game:GetService("TextService"):GetTextSize(
+				text, 
+				Library.FSize, 
+				TextValue.Font, 
+				Vector2.new(1000, 1000)
+			)
+			
+			if textSize.X > maxWidth then
+				local trimLength = math.floor(#text * (maxWidth / textSize.X)) - 3
+				if trimLength > 3 then
+					TextValue.Text = string.sub(text, 1, trimLength) .. "..."
+				else
+					TextValue.Text = text
+				end
+			else
+				TextValue.Text = text
+			end
+		end
+		
+		updateTextSize()
 		
 		-- Make it draggable
 		local dragging = false
@@ -1084,7 +1144,25 @@ do
 		if Library.Watermark then
 			local textLabel = Library.Watermark:FindFirstChild("Watermark"):FindFirstChild("Inline"):FindFirstChild("TextValue")
 			if textLabel then
-				textLabel.Text = Library.WatermarkText
+				-- Limit the maximum width by limiting text width
+				local maxWidth = 150 -- Maximum width in pixels
+				local textSize = game:GetService("TextService"):GetTextSize(
+					Library.WatermarkText, 
+					Library.FSize, 
+					textLabel.Font, 
+					Vector2.new(1000, 1000)
+				)
+				
+				if textSize.X > maxWidth then
+					local trimLength = math.floor(#Library.WatermarkText * (maxWidth / textSize.X)) - 3
+					if trimLength > 3 then
+						textLabel.Text = string.sub(Library.WatermarkText, 1, trimLength) .. "..."
+					else
+						textLabel.Text = Library.WatermarkText
+					end
+				else
+					textLabel.Text = Library.WatermarkText
+				end
 			end
 		end
 	end
@@ -1099,6 +1177,276 @@ do
 		-- If enabling and no watermark exists, create it
 		if state and not Library.Watermark then
 			self:CreateWatermark()
+		end
+	end
+	
+	-- Keybind List function
+	function Library:CreateKeybindList()
+		-- If there's already a keybind list, destroy it first
+		if Library.KeybindList then
+			Library.KeybindList:Destroy()
+			Library.KeybindList = nil
+		end
+		
+		-- Only create if keybind list is enabled
+		if not Library.KeybindListEnabled then
+			return
+		end
+		
+		-- Create keybind list container
+		local KeybindListContainer = Instance.new('Frame', Library.ScreenGUI)
+		KeybindListContainer.Name = "KeybindListContainer"
+		KeybindListContainer.Position = UDim2.new(0, 20, 0, 40)
+		KeybindListContainer.Size = UDim2.new(0, 180, 0, 0)
+		KeybindListContainer.AutomaticSize = Enum.AutomaticSize.Y
+		KeybindListContainer.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+		KeybindListContainer.BackgroundTransparency = 0
+		KeybindListContainer.BorderSizePixel = 1
+		KeybindListContainer.BorderColor3 = Color3.fromRGB(0, 0, 0)
+		KeybindListContainer.ZIndex = 9999998
+		Library.KeybindList = KeybindListContainer
+		
+		-- Create the UI elements
+		local KeybindListInline = Instance.new("Frame")
+		KeybindListInline.Name = "KeybindListInline"
+		KeybindListInline.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+		KeybindListInline.BorderColor3 = Color3.fromRGB(0, 0, 0)
+		KeybindListInline.BorderSizePixel = 0
+		KeybindListInline.Position = UDim2.new(0, 1, 0, 1)
+		KeybindListInline.Size = UDim2.new(1, -2, 1, -2)
+		KeybindListInline.AutomaticSize = Enum.AutomaticSize.Y
+		KeybindListInline.Parent = KeybindListContainer
+		
+		local UIStroke = Instance.new("UIStroke")
+		UIStroke.Name = "UIStroke"
+		UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		UIStroke.LineJoinMode = Enum.LineJoinMode.Miter
+		UIStroke.Thickness = 1
+		UIStroke.Transparency = 0.8
+		UIStroke.Parent = KeybindListContainer
+		
+		-- Add the header
+		local Header = Instance.new("Frame")
+		Header.Name = "Header"
+		Header.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+		Header.BorderColor3 = Color3.fromRGB(0, 0, 0)
+		Header.BorderSizePixel = 0
+		Header.Size = UDim2.new(1, 0, 0, 24)
+		Header.Parent = KeybindListInline
+		
+		local HeaderAccent = Library:NewInstance("Frame", true)
+		HeaderAccent.Name = "HeaderAccent"
+		HeaderAccent.BackgroundColor3 = Library.Accent
+		HeaderAccent.BorderColor3 = Color3.fromRGB(20, 20, 20)
+		HeaderAccent.BorderSizePixel = 0
+		HeaderAccent.Position = UDim2.new(0, 0, 0, 0)
+		HeaderAccent.Size = UDim2.new(1, 0, 0, 2)
+		HeaderAccent.Parent = Header
+		
+		local UIGradient = Instance.new("UIGradient")
+		UIGradient.Name = "UIGradient"
+		UIGradient.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(145, 145, 145)),
+		})
+		UIGradient.Rotation = 90
+		UIGradient.Parent = HeaderAccent
+		
+		local HeaderTitle = Instance.new("TextLabel")
+		HeaderTitle.Name = "HeaderTitle"
+		HeaderTitle.FontFace = realfont
+		HeaderTitle.Text = "Keybinds"
+		HeaderTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+		HeaderTitle.TextSize = Library.FSize
+		HeaderTitle.TextStrokeTransparency = 0
+		HeaderTitle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		HeaderTitle.BackgroundTransparency = 1
+		HeaderTitle.BorderColor3 = Color3.fromRGB(0, 0, 0)
+		HeaderTitle.BorderSizePixel = 0
+		HeaderTitle.Position = UDim2.new(0, 6, 0, 5)
+		HeaderTitle.Size = UDim2.new(1, -12, 0, 14)
+		HeaderTitle.Parent = Header
+		
+		-- Create content container
+		local ContentContainer = Instance.new("Frame")
+		ContentContainer.Name = "ContentContainer"
+		ContentContainer.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+		ContentContainer.BackgroundTransparency = 1
+		ContentContainer.BorderColor3 = Color3.fromRGB(0, 0, 0)
+		ContentContainer.BorderSizePixel = 0
+		ContentContainer.Position = UDim2.new(0, 0, 0, 24)
+		ContentContainer.Size = UDim2.new(1, 0, 0, 0)
+		ContentContainer.AutomaticSize = Enum.AutomaticSize.Y
+		ContentContainer.Parent = KeybindListInline
+		
+		local UIListLayout = Instance.new("UIListLayout")
+		UIListLayout.Name = "UIListLayout"
+		UIListLayout.Padding = UDim.new(0, 2)
+		UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+		UIListLayout.Parent = ContentContainer
+		
+		-- Add padding to the bottom
+		local UIPadding = Instance.new("UIPadding")
+		UIPadding.Name = "UIPadding"
+		UIPadding.PaddingBottom = UDim.new(0, 5)
+		UIPadding.Parent = ContentContainer
+		
+		-- Make it draggable
+		local dragging = false
+		local dragStart
+		local startPos
+		
+		Header.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+				dragging = true
+				dragStart = input.Position
+				startPos = KeybindListContainer.Position
+			end
+		end)
+		
+		Header.InputEnded:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1 then
+				dragging = false
+			end
+		end)
+		
+		game:GetService("UserInputService").InputChanged:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseMovement and dragging then
+				local delta = input.Position - dragStart
+				KeybindListContainer.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+			end
+		end)
+		
+		-- Update keybind entries
+		self:UpdateKeybindList()
+	end
+	
+	-- Function to update keybind list entries
+	function Library:UpdateKeybindList()
+		if not Library.KeybindList then return end
+		
+		local ContentContainer = Library.KeybindList:FindFirstChild("KeybindListInline"):FindFirstChild("ContentContainer")
+		if not ContentContainer then return end
+		
+		-- Clear existing entries
+		for _, child in pairs(ContentContainer:GetChildren()) do
+			if child:IsA("Frame") and child.Name == "KeybindEntry" then
+				child:Destroy()
+			end
+		end
+		
+		-- Add entries for each registered keybind
+		for name, data in pairs(Library.RegisteredKeybinds) do
+			-- Create keybind entry
+			local KeybindEntry = Instance.new("Frame")
+			KeybindEntry.Name = "KeybindEntry"
+			KeybindEntry.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+			KeybindEntry.BorderColor3 = Color3.fromRGB(20, 20, 20)
+			KeybindEntry.BorderSizePixel = 1
+			KeybindEntry.Size = UDim2.new(1, -10, 0, 24)
+			KeybindEntry.Position = UDim2.new(0, 5, 0, 0)
+			KeybindEntry.Parent = ContentContainer
+			
+			local KeyName = Instance.new("TextLabel")
+			KeyName.Name = "KeyName"
+			KeyName.FontFace = realfont
+			KeyName.Text = name
+			KeyName.TextColor3 = Color3.fromRGB(255, 255, 255)
+			KeyName.TextSize = Library.FSize
+			KeyName.TextStrokeTransparency = 0
+			KeyName.TextXAlignment = Enum.TextXAlignment.Left
+			KeyName.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+			KeyName.BackgroundTransparency = 1
+			KeyName.BorderColor3 = Color3.fromRGB(0, 0, 0)
+			KeyName.BorderSizePixel = 0
+			KeyName.Position = UDim2.new(0, 6, 0, 5)
+			KeyName.Size = UDim2.new(0.7, -6, 0, 14)
+			KeyName.Parent = KeybindEntry
+			
+			-- Implement active glow effect
+			if data.active then
+				KeyName.TextColor3 = Library.Accent
+			end
+			
+			-- Display the key
+			local KeyLabel = Instance.new("TextLabel")
+			KeyLabel.Name = "KeyLabel"
+			KeyLabel.FontFace = realfont
+			
+			-- Format the key text
+			local keyText
+			if data.key then
+				if typeof(data.key) == "EnumItem" then
+					keyText = Library.Keys[data.key] or tostring(data.key):gsub("Enum.KeyCode.", "")
+				else
+					keyText = tostring(data.key)
+				end
+			else
+				keyText = "None"
+			end
+			
+			KeyLabel.Text = "[" .. keyText .. "]"
+			KeyLabel.TextColor3 = data.active and Library.Accent or Color3.fromRGB(175, 175, 175)
+			KeyLabel.TextSize = Library.FSize
+			KeyLabel.TextStrokeTransparency = 0
+			KeyLabel.TextXAlignment = Enum.TextXAlignment.Right
+			KeyLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+			KeyLabel.BackgroundTransparency = 1
+			KeyLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
+			KeyLabel.BorderSizePixel = 0
+			KeyLabel.Position = UDim2.new(0.7, 0, 0, 5)
+			KeyLabel.Size = UDim2.new(0.3, -6, 0, 14)
+			KeyLabel.Parent = KeybindEntry
+			
+			-- Add glow effect for active keybinds
+			if data.active then
+				local Glow = Instance.new("Frame")
+				Glow.Name = "Glow"
+				Glow.BackgroundColor3 = Library.Accent
+				Glow.BackgroundTransparency = 0.7
+				Glow.BorderColor3 = Color3.fromRGB(0, 0, 0)
+				Glow.BorderSizePixel = 0
+				Glow.Size = UDim2.new(1, 0, 1, 0)
+				Glow.ZIndex = -1
+				Glow.Parent = KeybindEntry
+			end
+		end
+	end
+	
+	-- Function to register a keybind to the list
+	function Library:RegisterKeybind(name, key, active)
+		Library.RegisteredKeybinds[name] = {
+			key = key,
+			active = active or false
+		}
+		
+		if Library.KeybindListEnabled then
+			self:UpdateKeybindList()
+		end
+	end
+	
+	-- Function to update a keybind state
+	function Library:UpdateKeybindState(name, active)
+		if Library.RegisteredKeybinds[name] then
+			Library.RegisteredKeybinds[name].active = active
+			
+			if Library.KeybindListEnabled then
+				self:UpdateKeybindList()
+			end
+		end
+	end
+	
+	-- Function to toggle keybind list visibility
+	function Library:ToggleKeybindList(state)
+		Library.KeybindListEnabled = state
+		
+		if Library.KeybindList then
+			Library.KeybindList.Visible = state
+		end
+		
+		-- If enabling and no keybind list exists, create it
+		if state and not Library.KeybindList then
+			self:CreateKeybindList()
 		end
 	end
 
