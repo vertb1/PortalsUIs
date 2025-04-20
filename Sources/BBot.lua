@@ -265,6 +265,9 @@ do
 			if typeof(bool) == 'boolean' then
 				Library.Open = bool;
 				Library.Holder.Visible = bool;
+				
+				-- Allow the game to still receive character movement inputs even when UI is open
+				game:GetService("UserInputService").OverrideMouseIconBehavior = bool and Enum.OverrideMouseIconBehavior.ForceShow or Enum.OverrideMouseIconBehavior.None
 			end
 		end;
 		--
@@ -413,7 +416,7 @@ do
 			Title.Size = UDim2.new(1, 0, 0, 16)
 			Title.Parent = ColorInline
 
-			local TextButton = Instance.new("Frame")
+			local TextButton = Instance.new("TextButton")
 			TextButton.Name = "TextButton"
 			TextButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
 			TextButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
@@ -1457,7 +1460,7 @@ do
 				Name = Properties.Name or "Section",
 				Page = self,
 				Side = (Properties.side or Properties.Side or "left"):lower(),
-				AutoSize = (Properties.AutoSize or Properties.autosize or false),
+				AutoSize = (Properties.AutoSize or Properties.autosize or true),
 				Size = (Properties.Size or Properties.size or 100),
 				Zindex = (Properties.Zindex or Properties.zindex or 1),
 				Elements = {},
@@ -1534,17 +1537,26 @@ do
 			SectionContent.BorderSizePixel = 0
 			SectionContent.Position = UDim2.new(0, 10, 0, 24)
 			SectionContent.Size = UDim2.new(1, -20, 1, -30)
-
+			-- Add AutomaticSize to allow content to expand the section
+			SectionContent.AutomaticSize = Enum.AutomaticSize.Y
+			
 			local UIPadding = Instance.new("UIPadding")
 			UIPadding.Name = "UIPadding"
 			UIPadding.PaddingBottom = UDim.new(0, 12)
 			UIPadding.Parent = SectionContent
-
+			
 			local UIListLayout = Instance.new("UIListLayout")
 			UIListLayout.Name = "UIListLayout"
 			UIListLayout.Padding = UDim.new(0, 10)
 			UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 			UIListLayout.Parent = SectionContent
+			
+			-- Add change handler to resize section based on content
+			UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+				if Section.AutoSize then
+					SectionOutline.Size = UDim2.new(1, 0, 0, UIListLayout.AbsoluteContentSize.Y + 40) -- 40 for padding
+				end
+			end)
 
 			SectionContent.Parent = SectionInline
 
