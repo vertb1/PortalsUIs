@@ -368,17 +368,17 @@ do
 			ColorOutline.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 			ColorOutline.BorderColor3 = Color3.fromRGB(0, 0, 0)
 			ColorOutline.Position = UDim2.new(0,30,0,-20)
-			ColorOutline.Size = UDim2.new(0, 184, 0, 182)
+			ColorOutline.Size = UDim2.new(0, 184, 0, 212) -- Increased height to accommodate RGB inputs
 			ColorOutline.Visible = false
 			ColorOutline.Parent = Icon
 
 			local ColorInline = Instance.new("Frame")
 			ColorInline.Name = "ColorInline"
-			ColorInline.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-			ColorInline.BorderColor3 = Color3.fromRGB(0, 0, 0)
-			ColorInline.BorderSizePixel = 0
-			ColorInline.Position = UDim2.new(0, 2, 0, 2)
-			ColorInline.Size = UDim2.new(1, -4, 1, -4)
+				ColorInline.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+				ColorInline.BorderColor3 = Color3.fromRGB(0, 0, 0)
+				ColorInline.BorderSizePixel = 0
+				ColorInline.Position = UDim2.new(0, 2, 0, 2)
+				ColorInline.Size = UDim2.new(1, -4, 1, -4)
 
 			local Accent = Library:NewInstance("Frame", true)
 			Accent.Name = "Accent"
@@ -503,6 +503,72 @@ do
 
 			TextButton.Parent = ColorInline
 
+			-- RGB Value Display and Input
+			local RGBContainer = Instance.new("Frame")
+			RGBContainer.Name = "RGBContainer"
+			RGBContainer.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+			RGBContainer.BorderColor3 = Color3.fromRGB(0, 0, 0)
+			RGBContainer.BorderSizePixel = 0
+			RGBContainer.Position = UDim2.new(0, 6, 0, 176)
+			RGBContainer.Size = UDim2.new(1, -12, 0, 30)
+			RGBContainer.Parent = ColorInline
+			
+			-- Create RGB labels and input boxes
+			local function createRGBInput(name, position, value)
+				local Container = Instance.new("Frame")
+				Container.Name = name.."Container"
+				Container.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+				Container.BorderColor3 = Color3.fromRGB(0, 0, 0)
+				Container.BorderSizePixel = 1
+				Container.Position = position
+				Container.Size = UDim2.new(0, 50, 0, 20)
+				Container.Parent = RGBContainer
+				
+				local Label = Instance.new("TextLabel")
+				Label.Name = "Label"
+				Label.FontFace = realfont
+				Label.Text = name
+				Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+				Label.TextSize = Library.FSize
+				Label.TextStrokeTransparency = 0
+				Label.BackgroundTransparency = 1
+				Label.Position = UDim2.new(0, 0, 0, 2)
+				Label.Size = UDim2.new(0, 10, 1, 0)
+				Label.Parent = Container
+				
+				local Input = Instance.new("TextBox")
+				Input.Name = name.."Input"
+				Input.FontFace = realfont
+				Input.PlaceholderText = "0-255"
+				Input.Text = tostring(value)
+				Input.TextColor3 = Color3.fromRGB(255, 255, 255)
+				Input.TextSize = Library.FSize
+				Input.TextStrokeTransparency = 0
+				Input.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+				Input.BackgroundTransparency = 0.8
+				Input.BorderColor3 = Color3.fromRGB(50, 50, 50)
+				Input.BorderSizePixel = 1
+				Input.Position = UDim2.new(0, 12, 0, 2)
+				Input.Size = UDim2.new(1, -15, 1, -4)
+				Input.Parent = Container
+				
+				local UIStroke = Instance.new("UIStroke")
+				UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+				UIStroke.Color = Color3.fromRGB(40, 40, 40)
+				UIStroke.LineJoinMode = Enum.LineJoinMode.Miter
+				UIStroke.Thickness = 1
+				UIStroke.Parent = Container
+				
+				return Input
+			end
+			
+			-- Extract RGB values from default color
+			local r, g, b = math.floor(default.R * 255), math.floor(default.G * 255), math.floor(default.B * 255)
+			
+			local RInput = createRGBInput("R", UDim2.new(0, 0, 0, 5), r)
+			local GInput = createRGBInput("G", UDim2.new(0.33, 5, 0, 5), g)
+			local BInput = createRGBInput("B", UDim2.new(0.66, 10, 0, 5), b)
+
 			ColorInline.Parent = ColorOutline
 
 			-- // Connections
@@ -514,6 +580,70 @@ do
 			local slidingsaturation = false
 			local slidinghue = false
 			local slidingalpha = false
+
+			-- Helper function to handle RGB input validation
+			local function validateAndUpdate(textbox, newValue)
+				local num = tonumber(newValue)
+				
+				if not num then
+					-- If input is not a valid number, revert to current value
+					if textbox == RInput then
+						textbox.Text = tostring(math.floor(hsv.R * 255))
+					elseif textbox == GInput then
+						textbox.Text = tostring(math.floor(hsv.G * 255))
+					elseif textbox == BInput then
+						textbox.Text = tostring(math.floor(hsv.B * 255))
+					end
+					return nil
+				end
+				
+				-- Clamp value between 0-255
+				num = math.clamp(num, 0, 255)
+				textbox.Text = tostring(math.floor(num))
+				
+				return num
+			end
+			
+			-- Update RGB values when color changes
+			local function updateRGBInputs()
+				local r, g, b = math.floor(hsv.R * 255), math.floor(hsv.G * 255), math.floor(hsv.B * 255)
+				RInput.Text = tostring(r)
+				GInput.Text = tostring(g)
+				BInput.Text = tostring(b)
+			end
+			
+			-- Handle RGB input changes
+			local function handleRGBChange()
+				local r_val = validateAndUpdate(RInput, RInput.Text)
+				local g_val = validateAndUpdate(GInput, GInput.Text)
+				local b_val = validateAndUpdate(BInput, BInput.Text)
+				
+				if r_val and g_val and b_val then
+					local newColor = Color3.fromRGB(r_val, g_val, b_val)
+					hue, sat, val = newColor:ToHSV()
+					hsv = newColor
+					
+					-- Update UI elements
+					TextButton.BackgroundColor3 = Color3.fromHSV(hue, 1, 1)
+					HueAccent.BackgroundColor3 = Color3.fromHSV(hue, 1, 1)
+					Icon.BackgroundColor3 = hsv
+					SquareAccent.BackgroundColor3 = hsv
+					
+					-- Update sliders
+					HueSlide.Position = UDim2.new(0,-2,math.clamp(hue, 0.005, 0.990),0)
+					Square.Position = UDim2.new(math.clamp(1 - sat, 0.000, 1 - 0.030), 0, math.clamp(1 - val, 0.000, 1 - 0.030), 0)
+					
+					if flag then
+						Library.Flags[flag] = Library:RGBA(hsv.r * 255, hsv.g * 255, hsv.b * 255, alpha)
+					end
+					
+					callback(Library:RGBA(hsv.r * 255, hsv.g * 255, hsv.b * 255, alpha))
+				end
+			end
+			
+			RInput.FocusLost:Connect(handleRGBChange)
+			GInput.FocusLost:Connect(handleRGBChange)
+			BInput.FocusLost:Connect(handleRGBChange)
 
 			local function update()
 				local real_pos = game:GetService("UserInputService"):GetMouseLocation()
@@ -536,6 +666,9 @@ do
 
 				HueSlide.Position = UDim2.new(0,-2,math.clamp(hue, 0.005, 0.990),0)
 				Square.Position = UDim2.new(math.clamp(1 - sat, 0.000, 1 - 0.030), 0, math.clamp(1 - val, 0.000, 1 - 0.030), 0)
+				
+				-- Update RGB text inputs
+				updateRGBInputs()
 
 				if flag then
 					Library.Flags[flag] = Library:RGBA(hsv.r * 255, hsv.g * 255, hsv.b * 255, alpha)
@@ -567,6 +700,9 @@ do
 					SquareAccent.BackgroundColor3 = hsv
 					HueSlide.Position = UDim2.new(0,-2,math.clamp(hue, 0.005, 0.990),0)
 					Square.Position = UDim2.new(math.clamp(1 - sat, 0.000, 1 - 0.030), 0, math.clamp(1 - val, 0.000, 1 - 0.030), 0)
+					
+					-- Update RGB text inputs
+					updateRGBInputs()
 
 					if flag then
 						Library.Flags[flag] = Library:RGBA(hsv.r * 255, hsv.g * 255, hsv.b * 255, alpha)
@@ -580,6 +716,7 @@ do
 
 			set(default, defaultalpha)
 
+			
 			Sat.InputBegan:Connect(function(input)
 				if input.UserInputType == Enum.UserInputType.MouseButton1 then
 					slidingsaturation = true
