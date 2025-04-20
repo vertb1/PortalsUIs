@@ -552,13 +552,6 @@ do
 				Input.Size = UDim2.new(1, -15, 1, -4)
 				Input.Parent = Container
 				
-				local UIStroke = Instance.new("UIStroke")
-				UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-				UIStroke.Color = Color3.fromRGB(40, 40, 40)
-				UIStroke.LineJoinMode = Enum.LineJoinMode.Miter
-				UIStroke.Thickness = 1
-				UIStroke.Parent = Container
-				
 				return Input
 			end
 			
@@ -647,7 +640,8 @@ do
 
 			local function update()
 				local real_pos = game:GetService("UserInputService"):GetMouseLocation()
-				local mouse_position = Vector2.new(real_pos.X - 5, real_pos.Y - 30)
+				-- Remove the fixed offset that's causing the misalignment
+				local mouse_position = Vector2.new(real_pos.X, real_pos.Y)
 				local relative_palette = (mouse_position - TextButton.AbsolutePosition)
 				local relative_hue     = (mouse_position - Hue.AbsolutePosition)
 				--
