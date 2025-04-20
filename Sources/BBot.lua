@@ -1092,7 +1092,7 @@ do
 			local textSize = game:GetService("TextService"):GetTextSize(
 				text, 
 				Library.FSize, 
-				TextValue.Font, 
+				Enum.Font.Code, -- Use a standard font instead of custom font
 				Vector2.new(1000, 1000)
 			)
 			
@@ -1149,7 +1149,7 @@ do
 				local textSize = game:GetService("TextService"):GetTextSize(
 					Library.WatermarkText, 
 					Library.FSize, 
-					textLabel.Font, 
+					Enum.Font.Code, -- Use a standard font instead of custom font
 					Vector2.new(1000, 1000)
 				)
 				
