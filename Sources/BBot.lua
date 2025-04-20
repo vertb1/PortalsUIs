@@ -1,4 +1,3 @@
-
 if isfile("menu_plex.font") then
 	delfile("menu_plex.font")
 end
@@ -113,6 +112,8 @@ do
 		Notifs = {};
 		Friends = {};
 		Priorities = {};
+		OriginalMouseBehavior = nil;
+		MovementKeysEnabled = true; -- New property to enable movement
 	}
 
 	-- // Ignores
@@ -263,8 +264,23 @@ do
 				Library.Open = bool;
 				Library.Holder.Visible = bool;
 				
-				-- Allow the game to still receive character movement inputs even when UI is open
-				game:GetService("UserInputService").OverrideMouseIconBehavior = bool and Enum.OverrideMouseIconBehavior.ForceShow or Enum.OverrideMouseIconBehavior.None
+				-- More robust handling of input focus to allow movement
+				if bool then
+					-- Show the UI but don't capture character movement inputs
+					game:GetService("UserInputService").OverrideMouseIconBehavior = Enum.OverrideMouseIconBehavior.ForceShow
+					
+					-- Ensure the UI doesn't block movement inputs
+					if not Library.OriginalMouseBehavior then
+						Library.OriginalMouseBehavior = game:GetService("UserInputService").MouseBehavior
+					end
+					game:GetService("UserInputService").MouseBehavior = Enum.MouseBehavior.Default
+				else
+					-- Restore previous mouse behavior when UI is closed
+					if Library.OriginalMouseBehavior then
+						game:GetService("UserInputService").MouseBehavior = Library.OriginalMouseBehavior
+					end
+					game:GetService("UserInputService").OverrideMouseIconBehavior = Enum.OverrideMouseIconBehavior.None
+				end
 			end
 		end;
 		--
@@ -976,6 +992,7 @@ do
 			Library.Holder = Outline
 			Outline.Text = ""
 			Outline.AutoButtonColor = false
+			Outline.Modal = false -- Prevent capturing keyboard input
 
 			local Inline = Instance.new("Frame")
 			Inline.Name = "Inline"
@@ -4207,6 +4224,36 @@ do
 			Playerlist.Page.Elements.Right.Position = UDim2.new(0.5, 5,0.5, 75)
 		end
 	end;
+
+	-- Add this to ensure movement works when the UI is open (after all the library initializations)
+	-- Handle movement keys
+	Library:Connection(game:GetService("UserInputService").InputBegan, function(input, gameProcessed)
+		if Library.Open and Library.MovementKeysEnabled then
+			-- Common movement keys
+			local movementKeys = {
+				[Enum.KeyCode.W] = true,
+				[Enum.KeyCode.A] = true,
+				[Enum.KeyCode.S] = true,
+				[Enum.KeyCode.D] = true,
+				[Enum.KeyCode.Up] = true,
+				[Enum.KeyCode.Down] = true,
+				[Enum.KeyCode.Left] = true,
+				[Enum.KeyCode.Right] = true,
+				[Enum.KeyCode.Space] = true
+			}
+			
+			-- If it's a movement key, allow the game to process it
+			if movementKeys[input.KeyCode] then
+				-- Forward the input to the character controller
+				local player = game:GetService("Players").LocalPlayer
+				if player and player.Character then
+					-- Let the game process the input
+					return false
+				end
+			end
+		end
+		return gameProcessed
+	end)
 end;
 
 return Library
