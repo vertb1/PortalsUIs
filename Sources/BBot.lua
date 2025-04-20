@@ -1,6 +1,3 @@
--- This has not been tested on any other executors besides krampus (only tested in roblox studio)
--- I cannot guarantee everything works (ex. custom font which i removed)
--- Made by portal | example at bottom
 
 if isfile("menu_plex.font") then
 	delfile("menu_plex.font")
@@ -416,7 +413,7 @@ do
 			Title.Size = UDim2.new(1, 0, 0, 16)
 			Title.Parent = ColorInline
 
-			local TextButton = Instance.new("TextButton")
+			local TextButton = Instance.new("Frame") -- Changed back to Frame from TextButton
 			TextButton.Name = "TextButton"
 			TextButton.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
 			TextButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
@@ -643,8 +640,9 @@ do
 
 			local function update()
 				local real_pos = game:GetService("UserInputService"):GetMouseLocation()
-				-- Remove the fixed offset that's causing the misalignment
-				local mouse_position = Vector2.new(real_pos.X, real_pos.Y)
+				-- Calculate mouse position relative to GUI inset
+				local guiInset = game:GetService("GuiService"):GetGuiInset()
+				local mouse_position = Vector2.new(real_pos.X, real_pos.Y - guiInset.Y)
 				local relative_palette = (mouse_position - TextButton.AbsolutePosition)
 				local relative_hue     = (mouse_position - Hue.AbsolutePosition)
 				--
